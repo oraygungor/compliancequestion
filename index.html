@@ -1,469 +1,335 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Trader Quiz System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            color: #1f2937;
-        }
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #3b82f6;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Trader Quiz System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+    .spinner { border: 4px solid rgba(0,0,0,0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #3b82f6; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+  </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[500px]">
-        <!-- Header -->
-        <div class="bg-slate-800 text-white p-6 text-center">
-            <h1 class="text-2xl font-bold">AI Trader Quiz</h1>
-            <p class="text-sm text-slate-300 mt-1" id="header-status">Document-based smart QA assistant</p>
-        </div>
-
-        <!-- Content Area -->
-        <div class="p-6 md:p-8 flex-1 flex flex-col relative">
-            
-            <!-- Phase 0: API Key Auth -->
-            <div id="auth-phase" class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                    </svg>
-                </div>
-                <div class="w-full max-w-sm">
-                    <h2 class="text-xl font-semibold mb-2">API Key Required</h2>
-                    <p class="text-gray-500 text-sm mb-4">Please enter your Google Gemini API key. It stays securely in your browser's local storage.</p>
-                    <input type="password" id="api-key-input" placeholder="AIzaSy..." class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition mb-4 text-center">
-                    <button onclick="saveApiKey()" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
-                        Save & Continue
-                    </button>
-                </div>
-            </div>
-
-            <!-- Phase 1: Upload -->
-            <div id="upload-phase" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-xl font-semibold mb-2">Upload Knowledge Base</h2>
-                    <p class="text-gray-500 text-sm mb-4">Questions will be generated solely from the text you upload. (.txt file)</p>
-                    <input type="file" id="file-input" accept=".txt" class="hidden" onchange="handleFileUpload(event)">
-                    <button onclick="document.getElementById('file-input').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
-                        Select TXT File
-                    </button>
-                </div>
-            </div>
-
-            <!-- Phase 2: Loading State -->
-            <div id="loading-phase" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-4">
-                <div class="spinner"></div>
-                <p id="loading-text" class="text-gray-600 font-medium">AI is processing...</p>
-            </div>
-
-            <!-- Phase 3: Question Area -->
-            <div id="question-phase" class="hidden flex-1 flex flex-col">
-                <div class="flex justify-between items-center mb-6">
-                    <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">Question <span id="current-q-num">1</span>/3</span>
-                    <span class="text-sm font-medium text-gray-500">Score: <span id="current-score">0</span></span>
-                </div>
-                
-                <h3 id="question-text" class="text-lg md:text-xl font-semibold text-gray-800 mb-6 leading-relaxed">
-                    <!-- Soru metni buraya gelecek -->
-                </h3>
-
-                <div id="options-container" class="space-y-3">
-                    <!-- Şıklar buraya gelecek -->
-                </div>
-            </div>
-
-            <!-- Phase 4: Feedback Area -->
-            <div id="feedback-phase" class="hidden flex-1 flex flex-col">
-                <div id="feedback-icon-container" class="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4">
-                    <!-- Icon will be injected here -->
-                </div>
-                <h3 id="feedback-title" class="text-2xl font-bold text-center mb-4"></h3>
-                <div class="bg-gray-50 rounded-lg p-5 border border-gray-100 mb-6 flex-1 overflow-y-auto">
-                    <p id="feedback-text" class="text-gray-700 leading-relaxed"></p>
-                </div>
-                <button onclick="nextAction()" class="w-full bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
-                    Next Step
-                </button>
-            </div>
-
-            <!-- Phase 5: Final Results -->
-            <div id="results-phase" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                <div class="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-3xl font-bold mb-2">Quiz Completed!</h2>
-                    <p class="text-gray-500 mb-6">Here is your analysis</p>
-                    <div class="text-5xl font-black text-slate-800 mb-8"><span id="final-score"></span> <span class="text-2xl text-gray-400">/ 3</span></div>
-                    <button onclick="restartQuiz()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition duration-200">
-                        Start Over with a New Document
-                    </button>
-                </div>
-            </div>
-
-            <!-- Error Modal / Message Box -->
-            <div id="error-box" class="hidden absolute top-4 left-4 right-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md z-50">
-                <p class="font-bold">Error</p>
-                <p id="error-message" class="text-sm"></p>
-                <button onclick="hideError()" class="absolute top-2 right-2 text-red-500 hover:text-red-700">&times;</button>
-            </div>
-
-        </div>
+  <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[500px]">
+    <div class="bg-slate-800 text-white p-6 text-center">
+      <h1 class="text-2xl font-bold">AI Trader Quiz</h1>
+      <p class="text-sm text-slate-300 mt-1" id="header-status">Document-based smart QA assistant (OpenAI file_search)</p>
     </div>
 
-    <script>
-        // --- API & State Variables ---
-        let apiKey = localStorage.getItem('gemini_api_key') || "";
-        const MAX_QUESTIONS = 3;
-        const POINTS_PER_QUESTION = 1;
-        
-        let documentText = ""; 
-        let currentQuestionData = null;
-        let questionCount = 0;
-        let score = 0;
-        let askedQuestions = [];
+    <div class="p-6 md:p-8 flex-1 flex flex-col relative">
 
-        // --- DOM Elements ---
-        const phases = {
-            auth: document.getElementById('auth-phase'),
-            upload: document.getElementById('upload-phase'),
-            loading: document.getElementById('loading-phase'),
-            question: document.getElementById('question-phase'),
-            feedback: document.getElementById('feedback-phase'),
-            results: document.getElementById('results-phase')
-        };
-        const loadingText = document.getElementById('loading-text');
-        
-        // --- Initialization ---
-        window.onload = () => {
-            if (apiKey) {
-                // Daha önce kaydedilmişse input'u otomatik doldur
-                document.getElementById('api-key-input').value = apiKey;
-            }
-            showPhase('auth');
-        };
+      <!-- Phase: Upload -->
+      <div id="upload-phase" class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+        <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold mb-2">Upload Knowledge Base</h2>
+          <p class="text-gray-500 text-sm mb-4">Questions will be generated from your uploaded text. (.txt file)</p>
+          <input type="file" id="file-input" accept=".txt" class="hidden" onchange="handleFileUpload(event)">
+          <button onclick="document.getElementById('file-input').click()"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
+            Select TXT File
+          </button>
+        </div>
+      </div>
 
-        function saveApiKey() {
-            const keyInput = document.getElementById('api-key-input').value.trim();
-            if (!keyInput) {
-                showError("Please enter a valid API key.");
-                return;
-            }
-            apiKey = keyInput;
-            localStorage.setItem('gemini_api_key', apiKey); // Tarayıcı hafızasına kaydet
-            hideError();
-            showPhase('upload');
-            document.getElementById('header-status').innerText = "API Key saved. Ready to upload a document.";
+      <!-- Phase: Loading -->
+      <div id="loading-phase" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-4">
+        <div class="spinner"></div>
+        <p id="loading-text" class="text-gray-600 font-medium">Processing...</p>
+      </div>
+
+      <!-- Phase: Question -->
+      <div id="question-phase" class="hidden flex-1 flex flex-col">
+        <div class="flex justify-between items-center mb-6">
+          <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+            Question <span id="current-q-num">1</span>/3
+          </span>
+          <span class="text-sm font-medium text-gray-500">Score: <span id="current-score">0</span></span>
+        </div>
+
+        <h3 id="question-text" class="text-lg md:text-xl font-semibold text-gray-800 mb-6 leading-relaxed"></h3>
+        <div id="options-container" class="space-y-3"></div>
+      </div>
+
+      <!-- Phase: Feedback -->
+      <div id="feedback-phase" class="hidden flex-1 flex flex-col">
+        <div id="feedback-icon-container" class="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4"></div>
+        <h3 id="feedback-title" class="text-2xl font-bold text-center mb-4"></h3>
+        <div class="bg-gray-50 rounded-lg p-5 border border-gray-100 mb-6 flex-1 overflow-y-auto">
+          <p id="feedback-text" class="text-gray-700 leading-relaxed"></p>
+        </div>
+        <button onclick="nextAction()"
+          class="w-full bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
+          Next Step
+        </button>
+      </div>
+
+      <!-- Phase: Results -->
+      <div id="results-phase" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-6">
+        <div class="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-3xl font-bold mb-2">Quiz Completed!</h2>
+          <p class="text-gray-500 mb-6">Here is your result</p>
+          <div class="text-5xl font-black text-slate-800 mb-8">
+            <span id="final-score"></span> <span class="text-2xl text-gray-400">/ 3</span>
+          </div>
+          <button onclick="restartQuiz()"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition duration-200">
+            Start Over with a New Document
+          </button>
+        </div>
+      </div>
+
+      <!-- Error box -->
+      <div id="error-box"
+        class="hidden absolute top-4 left-4 right-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md z-50">
+        <p class="font-bold">Error</p>
+        <p id="error-message" class="text-sm"></p>
+        <button onclick="hideError()" class="absolute top-2 right-2 text-red-500 hover:text-red-700">&times;</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // --- State Variables ---
+    const MAX_QUESTIONS = 3;
+    const POINTS_PER_QUESTION = 1;
+
+    let vectorStoreId = "";
+    let currentQuestionData = null;
+    let questionCount = 0;
+    let score = 0;
+    let askedQuestions = [];
+
+    // --- DOM Elements ---
+    const phases = {
+      upload: document.getElementById('upload-phase'),
+      loading: document.getElementById('loading-phase'),
+      question: document.getElementById('question-phase'),
+      feedback: document.getElementById('feedback-phase'),
+      results: document.getElementById('results-phase')
+    };
+    const loadingText = document.getElementById('loading-text');
+
+    function showPhase(phaseName) {
+      Object.values(phases).forEach(el => el.classList.add('hidden'));
+      phases[phaseName].classList.remove('hidden');
+    }
+
+    function showError(message) {
+      document.getElementById('error-message').innerText = message;
+      document.getElementById('error-box').classList.remove('hidden');
+    }
+
+    function hideError() {
+      document.getElementById('error-box').classList.add('hidden');
+    }
+
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (file.type !== "text/plain") {
+        showError("Please upload only a .txt file.");
+        return;
+      }
+
+      showPhase("loading");
+      loadingText.innerText = "Reading file...";
+
+      const text = await file.text();
+      if (!text.trim()) {
+        showError("The uploaded file is empty.");
+        showPhase("upload");
+        return;
+      }
+
+      try {
+        hideError();
+        loadingText.innerText = "Indexing document into knowledge base...";
+        const res = await fetch("/api/kb", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: file.name, content: text })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error || "KB upload failed");
+        }
+        const data = await res.json();
+        vectorStoreId = data.vector_store_id;
+
+        document.getElementById('header-status').innerText = "Knowledge base indexed. Starting quiz...";
+        startQuiz();
+      } catch (e) {
+        showError(e.message);
+        showPhase("upload");
+      }
+    }
+
+    function startQuiz() {
+      questionCount = 0;
+      score = 0;
+      askedQuestions = [];
+      document.getElementById('current-score').innerText = score;
+      generateNextQuestion();
+    }
+
+    async function generateNextQuestion() {
+      if (questionCount >= MAX_QUESTIONS) {
+        showFinalResults();
+        return;
+      }
+
+      questionCount++;
+      document.getElementById('current-q-num').innerText = questionCount;
+
+      showPhase('loading');
+      loadingText.innerText = `Generating question ${questionCount}...`;
+      hideError();
+
+      try {
+        const res = await fetch("/api/generate-question", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vector_store_id: vectorStoreId,
+            askedQuestions
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error || "Question generation failed");
         }
 
-        // --- Helper Functions ---
-        function showPhase(phaseName) {
-            Object.values(phases).forEach(el => el.classList.add('hidden'));
-            phases[phaseName].classList.remove('hidden');
+        currentQuestionData = await res.json();
+        askedQuestions.push(currentQuestionData.question);
+        renderQuestion();
+      } catch (e) {
+        showError(e.message);
+        questionCount--;
+        showPhase('upload');
+      }
+    }
+
+    function renderQuestion() {
+      document.getElementById('question-text').innerText = currentQuestionData.question;
+
+      const optionsContainer = document.getElementById('options-container');
+      optionsContainer.innerHTML = '';
+
+      const options = currentQuestionData.options;
+      for (const [key, text] of Object.entries(options)) {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition duration-200 flex items-center group";
+        btn.onclick = () => handleOptionSelect(key, text);
+
+        btn.innerHTML = `
+          <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold flex items-center justify-center mr-4 group-hover:bg-blue-600 group-hover:text-white transition">${key}</span>
+          <span class="text-gray-700 font-medium">${text}</span>
+        `;
+        optionsContainer.appendChild(btn);
+      }
+
+      showPhase('question');
+    }
+
+    async function handleOptionSelect(selectedKey, selectedText) {
+      showPhase('loading');
+      loadingText.innerText = "Evaluating your answer...";
+
+      const isCorrectAnswer = (selectedKey === currentQuestionData.correctOption);
+
+      try {
+        const res = await fetch("/api/evaluate-answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vector_store_id: vectorStoreId,
+            questionData: currentQuestionData,
+            selectedKey,
+            selectedText
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error || "Evaluation failed");
         }
 
-        function showError(message) {
-            document.getElementById('error-message').innerText = message;
-            document.getElementById('error-box').classList.remove('hidden');
+        const evaluation = await res.json();
+
+        if (isCorrectAnswer) {
+          score += POINTS_PER_QUESTION;
+          document.getElementById('current-score').innerText = score;
         }
 
-        function hideError() {
-            document.getElementById('error-box').classList.add('hidden');
+        showFeedback(isCorrectAnswer, evaluation.explanation);
+      } catch (e) {
+        showError(e.message);
+        if (isCorrectAnswer) {
+          score += POINTS_PER_QUESTION;
+          document.getElementById('current-score').innerText = score;
         }
+        showFeedback(isCorrectAnswer, "Evaluation could not be retrieved from the server, but your selection was recorded.");
+      }
+    }
 
-        // HATA YAKALAMA SİSTEMİ GÜNCELLENDİ: Artık Google'ın gerçek hatasını gösterecek
-        async function fetchWithRetry(url, options, maxRetries = 2) {
-            const delays = [1000, 2000];
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    if (!response.ok) {
-                        const errorData = await response.json(); // Google'ın hata mesajını oku
-                        throw new Error(`API Hatası (${response.status}): ${errorData.error?.message || 'Bilinmeyen Hata'}`);
-                    }
-                    return await response.json();
-                } catch (error) {
-                    if (i === maxRetries - 1) throw error;
-                    await new Promise(res => setTimeout(res, delays[i]));
-                }
-            }
-        }
+    function showFeedback(isCorrect, explanation) {
+      const iconContainer = document.getElementById('feedback-icon-container');
+      const title = document.getElementById('feedback-title');
+      const textContainer = document.getElementById('feedback-text');
 
-        // --- Main App Logic ---
+      if (isCorrect) {
+        iconContainer.className = "flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-green-100 text-green-600";
+        iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+        title.innerText = "Correct";
+        title.className = "text-2xl font-bold text-center mb-4 text-green-600";
+      } else {
+        iconContainer.className = "flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-red-100 text-red-600";
+        iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+        title.innerText = "Incorrect";
+        title.className = "text-2xl font-bold text-center mb-4 text-red-600";
+      }
 
-        // 1. Dosya Yükleme (Doğrudan hafızaya alma)
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+      textContainer.innerText = explanation;
+      showPhase('feedback');
+    }
 
-            if (file.type !== "text/plain") {
-                showError("Please upload only a .txt file.");
-                return;
-            }
+    function nextAction() { generateNextQuestion(); }
 
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                documentText = e.target.result;
-                if(documentText.trim() === "") {
-                    showError("The uploaded file is empty.");
-                    return;
-                }
-                
-                document.getElementById('header-status').innerText = "Document loaded into memory.";
-                startQuiz();
-            };
-            reader.onerror = function() {
-                showError("An error occurred while reading the file.");
-                showPhase('upload');
-            }
-            reader.readAsText(file);
-        }
+    function showFinalResults() {
+      document.getElementById('final-score').innerText = score;
+      showPhase('results');
+      document.getElementById('header-status').innerText = "Quiz Finished";
+    }
 
-        function startQuiz() {
-            questionCount = 0;
-            score = 0;
-            askedQuestions = [];
-            document.getElementById('current-score').innerText = score;
-            generateNextQuestion();
-        }
-
-        // 2. Soru Üretme
-        async function generateNextQuestion() {
-            if (questionCount >= MAX_QUESTIONS) {
-                showFinalResults();
-                return;
-            }
-
-            questionCount++;
-            document.getElementById('current-q-num').innerText = questionCount;
-            
-            showPhase('loading');
-            loadingText.innerText = `Generating question ${questionCount} from cloud memory...`;
-            hideError();
-
-            const historyText = askedQuestions.length > 0 
-                ? `\n\nCRITICAL: You have already asked the following questions. DO NOT ask about these specific topics again. Find a DIFFERENT topic from the text:\n${askedQuestions.map((q, i) => i+1 + ". " + q).join('\n')}` 
-                : "";
-
-            const prompt = `
-            You are an expert financial educator. Below I am providing you with a source text.
-            TASK: Select a random piece of information or strategy from this source text and prepare a challenging 4-option multiple-choice question for intraday traders.
-            
-            STRICT RULES:
-            1. ONLY use the information provided in the text below. Do not add any outside information or assumptions.
-            2. Options must be A, B, C, and D. Only one must be correct.${historyText}
-            
-            SOURCE TEXT:
-            ---
-            ${documentText.substring(0, 30000)}
-            ---
-            `;
-
-            const schema = {
-                type: "OBJECT",
-                properties: {
-                    question: { type: "STRING" },
-                    options: {
-                        type: "OBJECT",
-                        properties: {
-                            A: { type: "STRING" },
-                            B: { type: "STRING" },
-                            C: { type: "STRING" },
-                            D: { type: "STRING" }
-                        }
-                    },
-                    correctOption: { type: "STRING", description: "Only letter: A, B, C or D" }
-                },
-                required: ["question", "options", "correctOption"]
-            };
-
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: "You are a quiz creator who stays 100% loyal to the document and never makes things up." }] },
-                generationConfig: {
-                    temperature: 0.5,
-                    responseMimeType: "application/json",
-                    responseSchema: schema
-                }
-            };
-
-            try {
-                // MODEL İSMİ GÜNCELLENDİ: En güncel gemini-2.5-flash modeli kullanılıyor
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-                const result = await fetchWithRetry(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-
-                const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!rawText) throw new Error("API returned an empty response.");
-                
-                currentQuestionData = JSON.parse(rawText);
-                askedQuestions.push(currentQuestionData.question);
-                
-                renderQuestion();
-
-            } catch (error) {
-                console.error(error);
-                showError("An error occurred while generating the question. Please try again.");
-                questionCount--; 
-                showPhase('upload'); 
-            }
-        }
-
-        // 3. Soruyu Ekrana Çizme
-        function renderQuestion() {
-            document.getElementById('question-text').innerText = currentQuestionData.question;
-            
-            const optionsContainer = document.getElementById('options-container');
-            optionsContainer.innerHTML = '';
-
-            const options = currentQuestionData.options;
-            for (const [key, text] of Object.entries(options)) {
-                const btn = document.createElement('button');
-                btn.className = "w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition duration-200 flex items-center group";
-                btn.onclick = () => handleOptionSelect(key, text);
-                
-                btn.innerHTML = `
-                    <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold flex items-center justify-center mr-4 group-hover:bg-blue-600 group-hover:text-white transition">${key}</span>
-                    <span class="text-gray-700 font-medium">${text}</span>
-                `;
-                optionsContainer.appendChild(btn);
-            }
-
-            showPhase('question');
-        }
-
-        // 4. Şık Seçildiğinde Değerlendirme
-        async function handleOptionSelect(selectedKey, selectedText) {
-            showPhase('loading');
-            loadingText.innerText = "Analyzing your answer...";
-            
-            const isCorrectAnswer = (selectedKey === currentQuestionData.correctOption);
-
-            const prompt = `
-            The user was asked the following trader question: "${currentQuestionData.question}"
-            The options were: 
-            A: ${currentQuestionData.options.A}
-            B: ${currentQuestionData.options.B}
-            C: ${currentQuestionData.options.C}
-            D: ${currentQuestionData.options.D}
-            
-            Correct answer: ${currentQuestionData.correctOption}
-            The option the user selected: ${selectedKey} (${selectedText})
-            
-            TASK: Evaluate the user's answer using the source text below.
-            - If they chose incorrectly: Explain why the selected option is wrong and why the correct answer is correct, strictly based on the text below.
-            - If they chose correctly: Explain why they are correct by referencing the source text and congratulate them.
-            
-            SOURCE TEXT:
-            ---
-            ${documentText.substring(0, 30000)}
-            ---
-            `;
-
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.2,
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            isCorrect: { type: "BOOLEAN" },
-                            explanation: { type: "STRING" }
-                        }
-                    }
-                }
-            };
-
-            try {
-                // MODEL İSMİ GÜNCELLENDİ: En güncel gemini-2.5-flash modeli kullanılıyor
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-                const result = await fetchWithRetry(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-
-                const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                const evaluation = JSON.parse(rawText);
-                
-                if (isCorrectAnswer) {
-                    score += POINTS_PER_QUESTION;
-                    document.getElementById('current-score').innerText = score;
-                }
-
-                showFeedback(isCorrectAnswer, evaluation.explanation);
-
-            } catch (error) {
-                console.error(error);
-                showError("Evaluation failed. Please check your connection.");
-                showFeedback(isCorrectAnswer, "API evaluation could not be retrieved, but the system recorded your answer.");
-            }
-        }
-
-        // 5. Geri Bildirimi Ekrana Basma
-        function showFeedback(isCorrect, explanation) {
-            const iconContainer = document.getElementById('feedback-icon-container');
-            const title = document.getElementById('feedback-title');
-            const textContainer = document.getElementById('feedback-text');
-
-            if (isCorrect) {
-                iconContainer.className = "flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-green-100 text-green-600";
-                iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
-                title.innerText = "Correct Answer! Congratulations!";
-                title.className = "text-2xl font-bold text-center mb-4 text-green-600";
-            } else {
-                iconContainer.className = "flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-red-100 text-red-600";
-                iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
-                title.innerText = "Wrong Answer!";
-                title.className = "text-2xl font-bold text-center mb-4 text-red-600";
-            }
-
-            textContainer.innerText = explanation;
-            showPhase('feedback');
-        }
-
-        function nextAction() {
-            generateNextQuestion();
-        }
-
-        function showFinalResults() {
-            document.getElementById('final-score').innerText = score;
-            showPhase('results');
-            document.getElementById('header-status').innerText = "Quiz Finished";
-        }
-
-        function restartQuiz() {
-            documentText = "";
-            document.getElementById('file-input').value = "";
-            document.getElementById('header-status').innerText = "Ready to upload a new document.";
-            showPhase('upload');
-        }
-
-    </script>
+    function restartQuiz() {
+      vectorStoreId = "";
+      currentQuestionData = null;
+      questionCount = 0;
+      score = 0;
+      askedQuestions = [];
+      document.getElementById('file-input').value = "";
+      document.getElementById('header-status').innerText = "Ready to upload a new document.";
+      showPhase('upload');
+    }
+  </script>
 </body>
 </html>
