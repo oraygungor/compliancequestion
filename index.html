@@ -35,8 +35,25 @@
         <!-- Content Area -->
         <div class="p-6 md:p-8 flex-1 flex flex-col relative">
             
+            <!-- Phase 0: API Key Auth -->
+            <div id="auth-phase" class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+                <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                </div>
+                <div class="w-full max-w-sm">
+                    <h2 class="text-xl font-semibold mb-2">API Key Required</h2>
+                    <p class="text-gray-500 text-sm mb-4">Please enter your Google Gemini API key. It stays securely in your browser's local storage.</p>
+                    <input type="password" id="api-key-input" placeholder="AIzaSy..." class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition mb-4 text-center">
+                    <button onclick="saveApiKey()" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
+                        Save & Continue
+                    </button>
+                </div>
+            </div>
+
             <!-- Phase 1: Upload -->
-            <div id="upload-phase" class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+            <div id="upload-phase" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-6">
                 <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -117,11 +134,11 @@
 
     <script>
         // --- API & State Variables ---
-        const apiKey = "AIzaSyDDTYA9G3Stz4_0kalesimRQdFpm_JhtKE"; // Çevresel değişkenlerden sağlanacak
+        let apiKey = localStorage.getItem('gemini_api_key') || "";
         const MAX_QUESTIONS = 3;
         const POINTS_PER_QUESTION = 1;
         
-        let documentText = ""; // YENİDEN EKLENDİ: Metni doğrudan tutacağız
+        let documentText = ""; 
         let currentQuestionData = null;
         let questionCount = 0;
         let score = 0;
@@ -129,6 +146,7 @@
 
         // --- DOM Elements ---
         const phases = {
+            auth: document.getElementById('auth-phase'),
             upload: document.getElementById('upload-phase'),
             loading: document.getElementById('loading-phase'),
             question: document.getElementById('question-phase'),
@@ -137,6 +155,28 @@
         };
         const loadingText = document.getElementById('loading-text');
         
+        // --- Initialization ---
+        window.onload = () => {
+            if (apiKey) {
+                // Daha önce kaydedilmişse input'u otomatik doldur
+                document.getElementById('api-key-input').value = apiKey;
+            }
+            showPhase('auth');
+        };
+
+        function saveApiKey() {
+            const keyInput = document.getElementById('api-key-input').value.trim();
+            if (!keyInput) {
+                showError("Please enter a valid API key.");
+                return;
+            }
+            apiKey = keyInput;
+            localStorage.setItem('gemini_api_key', apiKey); // Tarayıcı hafızasına kaydet
+            hideError();
+            showPhase('upload');
+            document.getElementById('header-status').innerText = "API Key saved. Ready to upload a document.";
+        }
+
         // --- Helper Functions ---
         function showPhase(phaseName) {
             Object.values(phases).forEach(el => el.classList.add('hidden'));
@@ -206,7 +246,7 @@
             generateNextQuestion();
         }
 
-        // 2. Soru Üretme (Artık Metin Göndermiyoruz, URI Gönderiyoruz)
+        // 2. Soru Üretme
         async function generateNextQuestion() {
             if (questionCount >= MAX_QUESTIONS) {
                 showFinalResults();
@@ -267,7 +307,8 @@
             };
 
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                // CHANGED: Using gemini-1.5-flash for maximum public compatibility
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
                 const result = await fetchWithRetry(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -313,7 +354,6 @@
             showPhase('question');
         }
 
-        // 4. Şık Seçildiğinde Değerlendirme (Yine URI Gönderiyoruz)
         // 4. Şık Seçildiğinde Değerlendirme
         async function handleOptionSelect(selectedKey, selectedText) {
             showPhase('loading');
@@ -358,7 +398,8 @@
             };
 
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                // CHANGED: Using gemini-1.5-flash for maximum public compatibility
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
                 const result = await fetchWithRetry(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
