@@ -584,31 +584,46 @@ async function generateNextQuestion() {
     ? `Avoid repeating these questions/topics:\n${askedQuestions.map((q,i)=>`${i+1}. ${q}`).join("\n")}`
     : "No previous questions yet.";
 
-  const queryForRetrieval = `Generate a challenging multiple-choice question (intraday trading) from this document. ${avoid}`;
+ const queryForRetrieval = `
+Find content about market manipulation, non-genuine orders (spoofing/layering), wash trades, price signalling/pinging,
+and inside information / insider trading / disclosure / prohibited behaviors.
+We need one trader-style multiple-choice question with short options.
+${avoid}
+`.trim();
 
   const { context, topCount } = await retrieveContext(queryForRetrieval);
   lastRetrievedCount = topCount;
 
   setLoading(`Generating question ${questionCount}...`, `Using top-${topCount} retrieved chunks...`, 35, `retrieved=${topCount}`);
 
-  const system = `You are a quiz creator for intraday traders. You must stay 100% loyal to the provided document excerpts. Do not use outside knowledge. Return STRICT JSON only.`;
+ const system = `
+You are a senior intraday power trader & market abuse trainer.
+Style: trader-floor language, concise, no fluff.
+Scope: ONLY from provided CONTEXT.
+Topic priority: market manipulation + inside information (MAR/REMIT concepts), non-genuine orders, misleading signals, improper disclosure.
+Output: STRICT JSON only.
+`.trim();
+  
   const user = `
-TASK: Create ONE challenging 4-option multiple-choice question for intraday traders.
-RULES:
-- Use ONLY the information present in the CONTEXT below.
-- Options must be A, B, C, D. Exactly one must be correct.
-- Do NOT invent facts.
+TASK: Create ONE tough multiple-choice question for intraday traders.
+
+HARD RULES:
+- Use ONLY the CONTEXT below.
+- Focus on: manipulation or inside information (highest priority).
+- Options must be SHORT (max ~8 words each).
+- Avoid long explanations in the question; keep question tight.
+- Exactly one correct option.
 - Do NOT repeat earlier topics/questions.
 
 ${avoid}
 
-CONTEXT (the only allowed source):
+CONTEXT (only allowed source):
 ${context}
 
 Return JSON:
 {
-  "question": "string",
-  "options": {"A":"...","B":"...","C":"...","D":"..."},
+  "question": "string (<= 180 chars, trader tone)",
+  "options": {"A":"<= 8 words","B":"<= 8 words","C":"<= 8 words","D":"<= 8 words"},
   "correctOption":"A|B|C|D"
 }
 `.trim();
