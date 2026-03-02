@@ -192,13 +192,15 @@
             document.getElementById('error-box').classList.add('hidden');
         }
 
-        async function fetchWithRetry(url, options, maxRetries = 5) {
-            const delays = [1000, 2000, 4000, 8000, 16000];
+        // HATA YAKALAMA SİSTEMİ GÜNCELLENDİ: Artık Google'ın gerçek hatasını gösterecek
+        async function fetchWithRetry(url, options, maxRetries = 2) {
+            const delays = [1000, 2000];
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fetch(url, options);
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const errorData = await response.json(); // Google'ın hata mesajını oku
+                        throw new Error(`API Hatası (${response.status}): ${errorData.error?.message || 'Bilinmeyen Hata'}`);
                     }
                     return await response.json();
                 } catch (error) {
@@ -307,8 +309,8 @@
             };
 
             try {
-                // CHANGED: Using gemini-1.5-flash for maximum public compatibility
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                // MODEL İSMİ GÜNCELLENDİ: En güncel gemini-2.5-flash modeli kullanılıyor
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
                 const result = await fetchWithRetry(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -398,8 +400,8 @@
             };
 
             try {
-                // CHANGED: Using gemini-1.5-flash for maximum public compatibility
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                // MODEL İSMİ GÜNCELLENDİ: En güncel gemini-2.5-flash modeli kullanılıyor
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
                 const result = await fetchWithRetry(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
