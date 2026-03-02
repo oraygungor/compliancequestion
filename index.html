@@ -3,41 +3,98 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Trader Quiz System</title>
+  <title>AI Trader Quiz (Single-file RAG)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
     .spinner { border: 4px solid rgba(0,0,0,0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #3b82f6; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
-
-  <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[500px]">
+  <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[560px]">
+    <!-- Header -->
     <div class="bg-slate-800 text-white p-6 text-center">
       <h1 class="text-2xl font-bold">AI Trader Quiz</h1>
-      <p class="text-sm text-slate-300 mt-1" id="header-status">Document-based smart QA assistant (OpenAI file_search)</p>
+      <p class="text-sm text-slate-300 mt-1" id="header-status">Single-file client-side knowledge base (IndexedDB + embeddings)</p>
     </div>
 
+    <!-- Content -->
     <div class="p-6 md:p-8 flex-1 flex flex-col relative">
 
+      <!-- Phase: Auth -->
+      <div id="auth-phase" class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+        <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+        </div>
+
+        <div class="w-full max-w-sm">
+          <h2 class="text-xl font-semibold mb-2">API Key Required</h2>
+          <p class="text-gray-500 text-sm mb-4">
+            OpenAI API key girin. Key localStorage’da saklanır (BYOK).
+            <span class="block mt-2 text-xs text-amber-600">
+              Uyarı: Bu yaklaşım key’i tarayıcı ortamına emanet eder.
+            </span>
+          </p>
+
+          <input type="password" id="api-key-input" placeholder="sk-..." class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition mb-3 text-center">
+          <div class="grid grid-cols-1 gap-2">
+            <button id="save-key-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
+              Save & Continue
+            </button>
+            <button id="clear-key-btn" class="w-full bg-white hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-lg font-medium transition duration-200 border border-gray-200">
+              Clear Saved Key
+            </button>
+          </div>
+
+          <div class="mt-5 text-left text-xs text-gray-500 leading-relaxed">
+            <div class="font-semibold text-gray-600 mb-1">Settings</div>
+            <label class="block mb-1">Embeddings model</label>
+            <input id="emb-model" class="w-full px-3 py-2 rounded border border-gray-200 mono" value="text-embedding-3-small" />
+            <label class="block mt-3 mb-1">Chat model</label>
+            <input id="chat-model" class="w-full px-3 py-2 rounded border border-gray-200 mono" value="gpt-4.1-mini" />
+            <label class="block mt-3 mb-1">Endpoint</label>
+            <select id="endpoint-mode" class="w-full px-3 py-2 rounded border border-gray-200">
+              <option value="responses">/v1/responses (new)</option>
+              <option value="chatcompletions">/v1/chat/completions (legacy)</option>
+            </select>
+            <div class="mt-2 text-[11px] text-gray-400">CORS sorunu yaşarsanız endpoint’i değiştirin; yine de bloklanırsa proxy gerekir.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Phase: Upload -->
-      <div id="upload-phase" class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+      <div id="upload-phase" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-6">
         <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
+
         <div>
           <h2 class="text-xl font-semibold mb-2">Upload Knowledge Base</h2>
-          <p class="text-gray-500 text-sm mb-4">Questions will be generated from your uploaded text. (.txt file)</p>
-          <input type="file" id="file-input" accept=".txt" class="hidden" onchange="handleFileUpload(event)">
-          <button onclick="document.getElementById('file-input').click()"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
+          <p class="text-gray-500 text-sm mb-4">
+            TXT içeriği bir kez indekslenir (IndexedDB). Sonraki promptlarda tekrar upload/embedding yapılmaz.
+          </p>
+          <input type="file" id="file-input" accept=".txt" class="hidden">
+          <button id="select-file-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
             Select TXT File
           </button>
+
+          <div class="mt-5 text-xs text-gray-500">
+            <div>Indexed KB:</div>
+            <div id="kb-info" class="mono text-[11px] mt-1">none</div>
+            <div class="mt-3 flex gap-2 justify-center">
+              <button id="reset-kb-btn" class="px-4 py-2 rounded border border-gray-200 hover:bg-gray-50 text-gray-700">Delete KB (this browser)</button>
+              <button id="start-quiz-btn" class="px-4 py-2 rounded bg-slate-800 hover:bg-slate-900 text-white hidden">Start Quiz</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -45,6 +102,13 @@
       <div id="loading-phase" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-4">
         <div class="spinner"></div>
         <p id="loading-text" class="text-gray-600 font-medium">Processing...</p>
+        <p id="loading-subtext" class="text-gray-400 text-sm"></p>
+        <div class="w-full max-w-sm">
+          <div class="h-2 bg-gray-100 rounded overflow-hidden">
+            <div id="progress-bar" class="h-2 bg-blue-500 w-0"></div>
+          </div>
+          <div class="mt-2 text-xs text-gray-400 mono" id="progress-meta"></div>
+        </div>
       </div>
 
       <!-- Phase: Question -->
@@ -55,9 +119,11 @@
           </span>
           <span class="text-sm font-medium text-gray-500">Score: <span id="current-score">0</span></span>
         </div>
-
         <h3 id="question-text" class="text-lg md:text-xl font-semibold text-gray-800 mb-6 leading-relaxed"></h3>
         <div id="options-container" class="space-y-3"></div>
+        <div class="mt-6 text-xs text-gray-400">
+          Retrieved chunks: <span id="retrieval-count">0</span>
+        </div>
       </div>
 
       <!-- Phase: Feedback -->
@@ -65,10 +131,9 @@
         <div id="feedback-icon-container" class="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4"></div>
         <h3 id="feedback-title" class="text-2xl font-bold text-center mb-4"></h3>
         <div class="bg-gray-50 rounded-lg p-5 border border-gray-100 mb-6 flex-1 overflow-y-auto">
-          <p id="feedback-text" class="text-gray-700 leading-relaxed"></p>
+          <p id="feedback-text" class="text-gray-700 leading-relaxed whitespace-pre-wrap"></p>
         </div>
-        <button onclick="nextAction()"
-          class="w-full bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
+        <button id="next-step-btn" class="w-full bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
           Next Step
         </button>
       </div>
@@ -83,253 +148,799 @@
         </div>
         <div>
           <h2 class="text-3xl font-bold mb-2">Quiz Completed!</h2>
-          <p class="text-gray-500 mb-6">Here is your result</p>
-          <div class="text-5xl font-black text-slate-800 mb-8">
-            <span id="final-score"></span> <span class="text-2xl text-gray-400">/ 3</span>
+          <p class="text-gray-500 mb-6">Here is your analysis</p>
+          <div class="text-5xl font-black text-slate-800 mb-8"><span id="final-score"></span> <span class="text-2xl text-gray-400">/ 3</span></div>
+          <div class="flex gap-2 justify-center">
+            <button id="restart-quiz-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition duration-200">
+              Start Quiz Again (same KB)
+            </button>
+            <button id="new-doc-btn" class="bg-white hover:bg-gray-50 text-gray-700 px-8 py-3 rounded-lg font-medium transition duration-200 border border-gray-200">
+              New Document
+            </button>
           </div>
-          <button onclick="restartQuiz()"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition duration-200">
-            Start Over with a New Document
-          </button>
         </div>
       </div>
 
       <!-- Error box -->
-      <div id="error-box"
-        class="hidden absolute top-4 left-4 right-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md z-50">
+      <div id="error-box" class="hidden absolute top-4 left-4 right-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md z-50">
         <p class="font-bold">Error</p>
         <p id="error-message" class="text-sm"></p>
-        <button onclick="hideError()" class="absolute top-2 right-2 text-red-500 hover:text-red-700">&times;</button>
+        <button id="hide-error-btn" class="absolute top-2 right-2 text-red-500 hover:text-red-700">&times;</button>
       </div>
 
     </div>
   </div>
 
-  <script>
-    // --- State Variables ---
-    const MAX_QUESTIONS = 3;
-    const POINTS_PER_QUESTION = 1;
+<script>
+/* ============================
+   CONFIG + STATE
+============================ */
+const LS_KEY = "openai_api_key_byok";
+const LS_SETTINGS = "openai_byok_settings_v1";
 
-    let vectorStoreId = "";
-    let currentQuestionData = null;
-    let questionCount = 0;
-    let score = 0;
-    let askedQuestions = [];
+const MAX_QUESTIONS = 3;
+const POINTS_PER_QUESTION = 1;
 
-    // --- DOM Elements ---
-    const phases = {
-      upload: document.getElementById('upload-phase'),
-      loading: document.getElementById('loading-phase'),
-      question: document.getElementById('question-phase'),
-      feedback: document.getElementById('feedback-phase'),
-      results: document.getElementById('results-phase')
+// RAG tuning
+const CHUNK_TARGET_CHARS = 2200;      // chunk size
+const CHUNK_OVERLAP_CHARS = 250;      // overlap
+const RETRIEVE_TOP_K = 6;             // number of chunks to include
+const MAX_CONTEXT_CHARS = 12000;      // safety cap for prompt context
+
+let apiKey = localStorage.getItem(LS_KEY) || "";
+let settings = loadSettings();
+let kb = null; // { docId, filename, createdAt, chunkCount }
+let currentQuestionData = null;
+let questionCount = 0;
+let score = 0;
+let askedQuestions = [];
+let lastRetrievedCount = 0;
+
+/* ============================
+   DOM
+============================ */
+const phases = {
+  auth: document.getElementById("auth-phase"),
+  upload: document.getElementById("upload-phase"),
+  loading: document.getElementById("loading-phase"),
+  question: document.getElementById("question-phase"),
+  feedback: document.getElementById("feedback-phase"),
+  results: document.getElementById("results-phase")
+};
+
+const el = {
+  headerStatus: document.getElementById("header-status"),
+
+  apiKeyInput: document.getElementById("api-key-input"),
+  saveKeyBtn: document.getElementById("save-key-btn"),
+  clearKeyBtn: document.getElementById("clear-key-btn"),
+
+  embModel: document.getElementById("emb-model"),
+  chatModel: document.getElementById("chat-model"),
+  endpointMode: document.getElementById("endpoint-mode"),
+
+  fileInput: document.getElementById("file-input"),
+  selectFileBtn: document.getElementById("select-file-btn"),
+  resetKbBtn: document.getElementById("reset-kb-btn"),
+  kbInfo: document.getElementById("kb-info"),
+  startQuizBtn: document.getElementById("start-quiz-btn"),
+
+  loadingText: document.getElementById("loading-text"),
+  loadingSubtext: document.getElementById("loading-subtext"),
+  progressBar: document.getElementById("progress-bar"),
+  progressMeta: document.getElementById("progress-meta"),
+
+  currentQNum: document.getElementById("current-q-num"),
+  currentScore: document.getElementById("current-score"),
+  questionText: document.getElementById("question-text"),
+  optionsContainer: document.getElementById("options-container"),
+  retrievalCount: document.getElementById("retrieval-count"),
+
+  feedbackIcon: document.getElementById("feedback-icon-container"),
+  feedbackTitle: document.getElementById("feedback-title"),
+  feedbackText: document.getElementById("feedback-text"),
+  nextStepBtn: document.getElementById("next-step-btn"),
+
+  finalScore: document.getElementById("final-score"),
+  restartQuizBtn: document.getElementById("restart-quiz-btn"),
+  newDocBtn: document.getElementById("new-doc-btn"),
+
+  errorBox: document.getElementById("error-box"),
+  errorMessage: document.getElementById("error-message"),
+  hideErrorBtn: document.getElementById("hide-error-btn")
+};
+
+/* ============================
+   UI HELPERS
+============================ */
+function showPhase(name) {
+  Object.values(phases).forEach(n => n.classList.add("hidden"));
+  phases[name].classList.remove("hidden");
+}
+function showError(msg) {
+  el.errorMessage.innerText = msg;
+  el.errorBox.classList.remove("hidden");
+}
+function hideError() {
+  el.errorBox.classList.add("hidden");
+}
+function setProgress(pct, meta = "") {
+  el.progressBar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  el.progressMeta.innerText = meta;
+}
+function setLoading(title, sub = "", pct = null, meta = "") {
+  el.loadingText.innerText = title;
+  el.loadingSubtext.innerText = sub;
+  if (pct === null) {
+    el.progressBar.style.width = "0%";
+    el.progressMeta.innerText = "";
+  } else {
+    setProgress(pct, meta);
+  }
+}
+function loadSettings() {
+  try {
+    return JSON.parse(localStorage.getItem(LS_SETTINGS) || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveSettings(obj) {
+  localStorage.setItem(LS_SETTINGS, JSON.stringify(obj));
+}
+
+/* ============================
+   INDEXEDDB (KB STORE)
+   - db: ai_trader_kb_v1
+   - stores:
+     * meta (key: docId) -> {docId, filename, createdAt, chunkCount}
+     * chunks (key: [docId, idx]) -> {docId, idx, text, embB64, norm}
+============================ */
+const DB_NAME = "ai_trader_kb_v1";
+const DB_VERSION = 1;
+
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("meta")) {
+        db.createObjectStore("meta", { keyPath: "docId" });
+      }
+      if (!db.objectStoreNames.contains("chunks")) {
+        const store = db.createObjectStore("chunks", { keyPath: "key" }); // key = `${docId}::${idx}`
+        store.createIndex("byDoc", "docId", { unique: false });
+      }
     };
-    const loadingText = document.getElementById('loading-text');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
 
-    function showPhase(phaseName) {
-      Object.values(phases).forEach(el => el.classList.add('hidden'));
-      phases[phaseName].classList.remove('hidden');
+async function dbPut(storeName, value) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).put(value);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbGet(storeName, key) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readonly");
+    const req = tx.objectStore(storeName).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDelete(storeName, key) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).delete(key);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbGetAllChunksForDoc(docId) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("chunks", "readonly");
+    const idx = tx.objectStore("chunks").index("byDoc");
+    const req = idx.getAll(docId);
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDeleteDoc(docId) {
+  const chunks = await dbGetAllChunksForDoc(docId);
+  const db = await openDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(["meta", "chunks"], "readwrite");
+    tx.objectStore("meta").delete(docId);
+    const chunkStore = tx.objectStore("chunks");
+    for (const c of chunks) {
+      chunkStore.delete(c.key);
     }
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
 
-    function showError(message) {
-      document.getElementById('error-message').innerText = message;
-      document.getElementById('error-box').classList.remove('hidden');
-    }
+/* ============================
+   BINARY (Float32Array) <-> base64
+============================ */
+function float32ToB64(f32) {
+  const u8 = new Uint8Array(f32.buffer);
+  let s = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < u8.length; i += chunk) {
+    s += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+  }
+  return btoa(s);
+}
+function b64ToFloat32(b64) {
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Float32Array(u8.buffer);
+}
 
-    function hideError() {
-      document.getElementById('error-box').classList.add('hidden');
-    }
+/* ============================
+   TEXT UTILS (chunking + hashing)
+============================ */
+async function sha256Hex(text) {
+  const enc = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", enc);
+  const arr = Array.from(new Uint8Array(digest));
+  return arr.map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
-    async function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+// Simple chunker: target chars, overlap
+function chunkText(raw) {
+  const text = raw.replace(/\r\n/g, "\n");
+  const chunks = [];
+  let i = 0;
+  while (i < text.length) {
+    const end = Math.min(text.length, i + CHUNK_TARGET_CHARS);
+    let slice = text.slice(i, end);
 
-      if (file.type !== "text/plain") {
-        showError("Please upload only a .txt file.");
-        return;
-      }
-
-      showPhase("loading");
-      loadingText.innerText = "Reading file...";
-
-      const text = await file.text();
-      if (!text.trim()) {
-        showError("The uploaded file is empty.");
-        showPhase("upload");
-        return;
-      }
-
-      try {
-        hideError();
-        loadingText.innerText = "Indexing document into knowledge base...";
-        const res = await fetch("/api/kb", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename: file.name, content: text })
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err?.error || "KB upload failed");
-        }
-        const data = await res.json();
-        vectorStoreId = data.vector_store_id;
-
-        document.getElementById('header-status').innerText = "Knowledge base indexed. Starting quiz...";
-        startQuiz();
-      } catch (e) {
-        showError(e.message);
-        showPhase("upload");
-      }
-    }
-
-    function startQuiz() {
-      questionCount = 0;
-      score = 0;
-      askedQuestions = [];
-      document.getElementById('current-score').innerText = score;
-      generateNextQuestion();
-    }
-
-    async function generateNextQuestion() {
-      if (questionCount >= MAX_QUESTIONS) {
-        showFinalResults();
-        return;
-      }
-
-      questionCount++;
-      document.getElementById('current-q-num').innerText = questionCount;
-
-      showPhase('loading');
-      loadingText.innerText = `Generating question ${questionCount}...`;
-      hideError();
-
-      try {
-        const res = await fetch("/api/generate-question", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            vector_store_id: vectorStoreId,
-            askedQuestions
-          })
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err?.error || "Question generation failed");
-        }
-
-        currentQuestionData = await res.json();
-        askedQuestions.push(currentQuestionData.question);
-        renderQuestion();
-      } catch (e) {
-        showError(e.message);
-        questionCount--;
-        showPhase('upload');
-      }
-    }
-
-    function renderQuestion() {
-      document.getElementById('question-text').innerText = currentQuestionData.question;
-
-      const optionsContainer = document.getElementById('options-container');
-      optionsContainer.innerHTML = '';
-
-      const options = currentQuestionData.options;
-      for (const [key, text] of Object.entries(options)) {
-        const btn = document.createElement('button');
-        btn.className = "w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition duration-200 flex items-center group";
-        btn.onclick = () => handleOptionSelect(key, text);
-
-        btn.innerHTML = `
-          <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold flex items-center justify-center mr-4 group-hover:bg-blue-600 group-hover:text-white transition">${key}</span>
-          <span class="text-gray-700 font-medium">${text}</span>
-        `;
-        optionsContainer.appendChild(btn);
-      }
-
-      showPhase('question');
-    }
-
-    async function handleOptionSelect(selectedKey, selectedText) {
-      showPhase('loading');
-      loadingText.innerText = "Evaluating your answer...";
-
-      const isCorrectAnswer = (selectedKey === currentQuestionData.correctOption);
-
-      try {
-        const res = await fetch("/api/evaluate-answer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            vector_store_id: vectorStoreId,
-            questionData: currentQuestionData,
-            selectedKey,
-            selectedText
-          })
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err?.error || "Evaluation failed");
-        }
-
-        const evaluation = await res.json();
-
-        if (isCorrectAnswer) {
-          score += POINTS_PER_QUESTION;
-          document.getElementById('current-score').innerText = score;
-        }
-
-        showFeedback(isCorrectAnswer, evaluation.explanation);
-      } catch (e) {
-        showError(e.message);
-        if (isCorrectAnswer) {
-          score += POINTS_PER_QUESTION;
-          document.getElementById('current-score').innerText = score;
-        }
-        showFeedback(isCorrectAnswer, "Evaluation could not be retrieved from the server, but your selection was recorded.");
+    // try to cut on a boundary near the end
+    if (end < text.length) {
+      const lastBreak = Math.max(
+        slice.lastIndexOf("\n\n"),
+        slice.lastIndexOf("\n"),
+        slice.lastIndexOf(". "),
+        slice.lastIndexOf(" ")
+      );
+      if (lastBreak > CHUNK_TARGET_CHARS * 0.6) {
+        slice = slice.slice(0, lastBreak + 1);
       }
     }
+    const cleaned = slice.trim();
+    if (cleaned) chunks.push(cleaned);
+    i += Math.max(1, slice.length - CHUNK_OVERLAP_CHARS);
+  }
+  return chunks;
+}
 
-    function showFeedback(isCorrect, explanation) {
-      const iconContainer = document.getElementById('feedback-icon-container');
-      const title = document.getElementById('feedback-title');
-      const textContainer = document.getElementById('feedback-text');
+/* ============================
+   MATH (cosine similarity)
+============================ */
+function dot(a, b) {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s;
+}
+function norm(a) {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * a[i];
+  return Math.sqrt(s);
+}
+function cosineSim(a, aNorm, b, bNorm) {
+  const denom = (aNorm * bNorm) || 1e-9;
+  return dot(a, b) / denom;
+}
 
-      if (isCorrect) {
-        iconContainer.className = "flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-green-100 text-green-600";
-        iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
-        title.innerText = "Correct";
-        title.className = "text-2xl font-bold text-center mb-4 text-green-600";
-      } else {
-        iconContainer.className = "flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-red-100 text-red-600";
-        iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
-        title.innerText = "Incorrect";
-        title.className = "text-2xl font-bold text-center mb-4 text-red-600";
-      }
+/* ============================
+   OPENAI CALLS (direct from browser)
+============================ */
+async function openaiFetch(path, body) {
+  if (!apiKey) throw new Error("Missing API key.");
+  const res = await fetch(`https://api.openai.com${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    let detail = "";
+    try { detail = await res.text(); } catch {}
+    throw new Error(`OpenAI error (${res.status}): ${detail || res.statusText}`);
+  }
+  return res.json();
+}
 
-      textContainer.innerText = explanation;
-      showPhase('feedback');
-    }
+async function embedText(text) {
+  const model = settings.embModel || "text-embedding-3-small";
+  const data = await openaiFetch("/v1/embeddings", {
+    model,
+    input: text
+  });
+  const v = data?.data?.[0]?.embedding;
+  if (!v) throw new Error("Embeddings response missing embedding vector.");
+  const f32 = new Float32Array(v);
+  return { f32, n: norm(f32) };
+}
 
-    function nextAction() { generateNextQuestion(); }
+async function generateTextWithContext(system, user) {
+  const mode = settings.endpointMode || "responses";
+  const model = settings.chatModel || "gpt-4.1-mini";
 
-    function showFinalResults() {
-      document.getElementById('final-score').innerText = score;
-      showPhase('results');
-      document.getElementById('header-status').innerText = "Quiz Finished";
-    }
+  if (mode === "responses") {
+    const data = await openaiFetch("/v1/responses", {
+      model,
+      input: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ],
+      // If supported, helps keep JSON-only; if unsupported, it may be ignored.
+      response_format: { type: "json_object" }
+    });
+    // responses API typically has output_text
+    if (data?.output_text) return data.output_text;
+    // fallback extraction
+    const out = data?.output?.[0]?.content?.[0]?.text;
+    if (out) return out;
+    return JSON.stringify(data);
+  }
 
-    function restartQuiz() {
-      vectorStoreId = "";
-      currentQuestionData = null;
-      questionCount = 0;
-      score = 0;
-      askedQuestions = [];
-      document.getElementById('file-input').value = "";
-      document.getElementById('header-status').innerText = "Ready to upload a new document.";
-      showPhase('upload');
-    }
-  </script>
+  // Legacy Chat Completions
+  const data = await openaiFetch("/v1/chat/completions", {
+    model,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ],
+    temperature: 0.4
+  });
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("Chat completions returned empty content.");
+  return text;
+}
+
+/* ============================
+   RAG: retrieve top-k chunks for a query
+============================ */
+async function retrieveContext(query) {
+  if (!kb?.docId) throw new Error("No KB loaded.");
+  const { f32: qEmb, n: qNorm } = await embedText(query);
+  const chunks = await dbGetAllChunksForDoc(kb.docId);
+  if (!chunks.length) throw new Error("KB has no chunks.");
+
+  // compute similarity
+  const scored = chunks.map(c => {
+    const emb = b64ToFloat32(c.embB64);
+    const sim = cosineSim(qEmb, qNorm, emb, c.norm);
+    return { sim, idx: c.idx, text: c.text };
+  });
+
+  scored.sort((a,b) => b.sim - a.sim);
+  const top = scored.slice(0, RETRIEVE_TOP_K);
+
+  // build context with cap
+  let context = "";
+  let used = 0;
+  for (const item of top) {
+    const block = `\n[CHUNK ${item.idx} | score ${item.sim.toFixed(3)}]\n${item.text}\n`;
+    if (used + block.length > MAX_CONTEXT_CHARS) break;
+    context += block;
+    used += block.length;
+  }
+
+  return { context, topCount: top.length };
+}
+
+/* ============================
+   QUIZ LOGIC
+============================ */
+function safeJsonParse(maybeText) {
+  // direct JSON
+  try { return JSON.parse(maybeText); } catch {}
+  // extract object
+  const start = maybeText.indexOf("{");
+  const end = maybeText.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    const sliced = maybeText.slice(start, end + 1);
+    return JSON.parse(sliced);
+  }
+  throw new Error("Model did not return valid JSON.");
+}
+
+async function generateNextQuestion() {
+  if (questionCount >= MAX_QUESTIONS) {
+    showFinalResults();
+    return;
+  }
+
+  questionCount++;
+  el.currentQNum.innerText = questionCount;
+
+  showPhase("loading");
+  setLoading(`Generating question ${questionCount}...`, "Retrieving relevant chunks from KB...");
+
+  hideError();
+
+  const avoid = askedQuestions.length
+    ? `Avoid repeating these questions/topics:\n${askedQuestions.map((q,i)=>`${i+1}. ${q}`).join("\n")}`
+    : "No previous questions yet.";
+
+  const queryForRetrieval = `Generate a challenging multiple-choice question (intraday trading) from this document. ${avoid}`;
+
+  const { context, topCount } = await retrieveContext(queryForRetrieval);
+  lastRetrievedCount = topCount;
+
+  setLoading(`Generating question ${questionCount}...`, `Using top-${topCount} retrieved chunks...`, 35, `retrieved=${topCount}`);
+
+  const system = `You are a quiz creator for intraday traders. You must stay 100% loyal to the provided document excerpts. Do not use outside knowledge. Return STRICT JSON only.`;
+  const user = `
+TASK: Create ONE challenging 4-option multiple-choice question for intraday traders.
+RULES:
+- Use ONLY the information present in the CONTEXT below.
+- Options must be A, B, C, D. Exactly one must be correct.
+- Do NOT invent facts.
+- Do NOT repeat earlier topics/questions.
+
+${avoid}
+
+CONTEXT (the only allowed source):
+${context}
+
+Return JSON:
+{
+  "question": "string",
+  "options": {"A":"...","B":"...","C":"...","D":"..."},
+  "correctOption":"A|B|C|D"
+}
+`.trim();
+
+  const raw = await generateTextWithContext(system, user);
+  setLoading(`Generating question ${questionCount}...`, `Parsing model output...`, 70, "parsing_json");
+
+  const obj = safeJsonParse(raw);
+  if (!obj?.question || !obj?.options || !obj?.correctOption) throw new Error("Invalid question JSON shape.");
+  if (!["A","B","C","D"].includes(obj.correctOption)) throw new Error("correctOption must be A/B/C/D.");
+
+  currentQuestionData = obj;
+  askedQuestions.push(obj.question);
+
+  renderQuestion();
+}
+
+function renderQuestion() {
+  el.questionText.innerText = currentQuestionData.question;
+  el.retrievalCount.innerText = String(lastRetrievedCount);
+
+  el.optionsContainer.innerHTML = "";
+  const options = currentQuestionData.options;
+
+  for (const key of ["A","B","C","D"]) {
+    const text = options[key];
+    const btn = document.createElement("button");
+    btn.className = "w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition duration-200 flex items-center group";
+    btn.onclick = () => handleOptionSelect(key, text);
+    btn.innerHTML = `
+      <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold flex items-center justify-center mr-4 group-hover:bg-blue-600 group-hover:text-white transition">${key}</span>
+      <span class="text-gray-700 font-medium">${text}</span>
+    `;
+    el.optionsContainer.appendChild(btn);
+  }
+
+  showPhase("question");
+}
+
+async function handleOptionSelect(selectedKey, selectedText) {
+  showPhase("loading");
+  setLoading("Evaluating your answer...", "Retrieving supporting chunks from KB...");
+
+  const isCorrectAnswer = (selectedKey === currentQuestionData.correctOption);
+
+  const query = `Explain why option ${currentQuestionData.correctOption} is correct and why option ${selectedKey} is ${isCorrectAnswer ? "correct" : "wrong"} for this question: ${currentQuestionData.question}`;
+  const { context, topCount } = await retrieveContext(query);
+  lastRetrievedCount = topCount;
+
+  setLoading("Evaluating your answer...", `Using top-${topCount} retrieved chunks...`, 40, `retrieved=${topCount}`);
+
+  const system = `You are grading a quiz. Use ONLY the provided CONTEXT. Return STRICT JSON only.`;
+  const user = `
+Question: ${currentQuestionData.question}
+
+Options:
+A: ${currentQuestionData.options.A}
+B: ${currentQuestionData.options.B}
+C: ${currentQuestionData.options.C}
+D: ${currentQuestionData.options.D}
+
+Correct: ${currentQuestionData.correctOption}
+User selected: ${selectedKey} (${selectedText})
+
+TASK:
+- Determine if the user is correct.
+- Explain using ONLY the CONTEXT.
+- If wrong: explain why selected is wrong and why correct is correct.
+- If correct: explain why correct.
+
+CONTEXT:
+${context}
+
+Return JSON:
+{
+  "isCorrect": true/false,
+  "explanation": "string"
+}
+`.trim();
+
+  const raw = await generateTextWithContext(system, user);
+  setLoading("Evaluating your answer...", "Parsing model output...", 75, "parsing_json");
+
+  let evaluation;
+  try {
+    evaluation = safeJsonParse(raw);
+  } catch {
+    // fallback: still show something
+    evaluation = { isCorrect: isCorrectAnswer, explanation: raw };
+  }
+
+  if (isCorrectAnswer) {
+    score += POINTS_PER_QUESTION;
+    el.currentScore.innerText = score;
+  }
+
+  showFeedback(isCorrectAnswer, evaluation.explanation);
+}
+
+function showFeedback(isCorrect, explanation) {
+  if (isCorrect) {
+    el.feedbackIcon.className = "flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-green-100 text-green-600";
+    el.feedbackIcon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+    el.feedbackTitle.innerText = "Correct";
+    el.feedbackTitle.className = "text-2xl font-bold text-center mb-4 text-green-600";
+  } else {
+    el.feedbackIcon.className = "flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-red-100 text-red-600";
+    el.feedbackIcon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+    el.feedbackTitle.innerText = "Incorrect";
+    el.feedbackTitle.className = "text-2xl font-bold text-center mb-4 text-red-600";
+  }
+
+  el.feedbackText.innerText = explanation + `\n\n(Last retrieval: top-${lastRetrievedCount} chunks)`;
+  showPhase("feedback");
+}
+
+function nextAction() {
+  generateNextQuestion().catch(err => {
+    console.error(err);
+    showError(err.message || String(err));
+    showPhase("upload");
+  });
+}
+
+function showFinalResults() {
+  el.finalScore.innerText = score;
+  showPhase("results");
+  el.headerStatus.innerText = "Quiz Finished";
+}
+
+function startQuiz() {
+  questionCount = 0;
+  score = 0;
+  askedQuestions = [];
+  el.currentScore.innerText = score;
+  el.headerStatus.innerText = "KB ready. Generating quiz...";
+  generateNextQuestion().catch(err => {
+    console.error(err);
+    showError(err.message || String(err));
+    showPhase("upload");
+  });
+}
+
+/* ============================
+   KB: index document once, reuse forever (in this browser)
+============================ */
+async function loadExistingKbInfo() {
+  // We do not know docId yet; show last meta if exists by scanning is non-trivial without cursor.
+  // Instead: keep last docId in localStorage for convenience.
+  const lastDocId = localStorage.getItem("kb_last_doc_id") || "";
+  if (!lastDocId) {
+    el.kbInfo.innerText = "none";
+    el.startQuizBtn.classList.add("hidden");
+    return;
+  }
+  const meta = await dbGet("meta", lastDocId);
+  if (!meta) {
+    el.kbInfo.innerText = "none";
+    el.startQuizBtn.classList.add("hidden");
+    return;
+  }
+  kb = meta;
+  el.kbInfo.innerText = `docId=${meta.docId.slice(0,12)}... | file=${meta.filename} | chunks=${meta.chunkCount} | created=${new Date(meta.createdAt).toLocaleString()}`;
+  el.startQuizBtn.classList.remove("hidden");
+  el.headerStatus.innerText = "Existing KB found in this browser.";
+}
+
+async function indexDocumentOnce(filename, text) {
+  const docId = await sha256Hex(text);
+  const existing = await dbGet("meta", docId);
+  if (existing) {
+    kb = existing;
+    localStorage.setItem("kb_last_doc_id", docId);
+    return { reused: true, docId };
+  }
+
+  const chunks = chunkText(text);
+  if (!chunks.length) throw new Error("No text chunks produced.");
+
+  // Save meta early (chunkCount filled later)
+  const meta = { docId, filename, createdAt: Date.now(), chunkCount: chunks.length };
+  await dbPut("meta", meta);
+
+  // Embed each chunk (sequential; safer for rate limits)
+  for (let i = 0; i < chunks.length; i++) {
+    const pct = Math.round((i / chunks.length) * 100);
+    setLoading("Indexing knowledge base...", `Embedding chunk ${i+1}/${chunks.length}`, pct, `chunk=${i+1}/${chunks.length}`);
+
+    const { f32, n } = await embedText(chunks[i]);
+
+    const rec = {
+      key: `${docId}::${i}`,
+      docId,
+      idx: i,
+      text: chunks[i],
+      embB64: float32ToB64(f32),
+      norm: n
+    };
+    await dbPut("chunks", rec);
+  }
+
+  kb = meta;
+  localStorage.setItem("kb_last_doc_id", docId);
+  return { reused: false, docId };
+}
+
+async function deleteCurrentKb() {
+  const lastDocId = localStorage.getItem("kb_last_doc_id") || "";
+  if (!lastDocId) return;
+  await dbDeleteDoc(lastDocId);
+  localStorage.removeItem("kb_last_doc_id");
+  kb = null;
+  el.kbInfo.innerText = "none";
+  el.startQuizBtn.classList.add("hidden");
+  el.headerStatus.innerText = "KB deleted (this browser).";
+}
+
+/* ============================
+   EVENT WIRING
+============================ */
+window.addEventListener("load", async () => {
+  // preload saved key + settings
+  if (apiKey) el.apiKeyInput.value = apiKey;
+
+  el.embModel.value = settings.embModel || "text-embedding-3-small";
+  el.chatModel.value = settings.chatModel || "gpt-4.1-mini";
+  el.endpointMode.value = settings.endpointMode || "responses";
+
+  showPhase("auth");
+});
+
+el.saveKeyBtn.addEventListener("click", async () => {
+  const key = el.apiKeyInput.value.trim();
+  if (!key) return showError("Please enter a valid API key.");
+  apiKey = key;
+  localStorage.setItem(LS_KEY, apiKey);
+
+  // save settings
+  settings = {
+    embModel: el.embModel.value.trim() || "text-embedding-3-small",
+    chatModel: el.chatModel.value.trim() || "gpt-4.1-mini",
+    endpointMode: el.endpointMode.value
+  };
+  saveSettings(settings);
+
+  hideError();
+  showPhase("upload");
+  el.headerStatus.innerText = "API key saved. Ready to load KB.";
+  await loadExistingKbInfo();
+});
+
+el.clearKeyBtn.addEventListener("click", () => {
+  localStorage.removeItem(LS_KEY);
+  apiKey = "";
+  el.apiKeyInput.value = "";
+  showError("Saved key cleared. Please enter a key to continue.");
+});
+
+el.hideErrorBtn.addEventListener("click", hideError);
+
+el.selectFileBtn.addEventListener("click", () => el.fileInput.click());
+
+el.fileInput.addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.type !== "text/plain") {
+    showError("Please upload only a .txt file.");
+    return;
+  }
+
+  try {
+    hideError();
+    showPhase("loading");
+    setLoading("Reading file...", file.name);
+
+    const text = await file.text();
+    if (!text.trim()) throw new Error("The uploaded file is empty.");
+
+    setLoading("Indexing knowledge base...", "Creating chunks + embeddings...", 0, "starting");
+    const { reused } = await indexDocumentOnce(file.name, text);
+
+    showPhase("upload");
+    el.headerStatus.innerText = reused ? "KB already indexed (reused from IndexedDB)." : "KB indexed and saved to IndexedDB.";
+    el.kbInfo.innerText = `docId=${kb.docId.slice(0,12)}... | file=${kb.filename} | chunks=${kb.chunkCount} | created=${new Date(kb.createdAt).toLocaleString()}`;
+    el.startQuizBtn.classList.remove("hidden");
+  } catch (err) {
+    console.error(err);
+    showError(err.message || String(err));
+    showPhase("upload");
+  } finally {
+    // allow re-upload same file
+    el.fileInput.value = "";
+  }
+});
+
+el.resetKbBtn.addEventListener("click", async () => {
+  hideError();
+  showPhase("loading");
+  setLoading("Deleting KB...", "Removing IndexedDB entries...");
+  try {
+    await deleteCurrentKb();
+  } catch (err) {
+    console.error(err);
+    showError(err.message || String(err));
+  }
+  showPhase("upload");
+});
+
+el.startQuizBtn.addEventListener("click", () => {
+  if (!kb?.docId) return showError("No KB loaded.");
+  startQuiz();
+});
+
+el.nextStepBtn.addEventListener("click", nextAction);
+
+el.restartQuizBtn.addEventListener("click", () => {
+  if (!kb?.docId) {
+    showPhase("upload");
+    return;
+  }
+  startQuiz();
+});
+
+el.newDocBtn.addEventListener("click", () => {
+  currentQuestionData = null;
+  questionCount = 0;
+  score = 0;
+  askedQuestions = [];
+  el.currentScore.innerText = "0";
+  el.headerStatus.innerText = "Ready to upload a new document.";
+  showPhase("upload");
+});
+
+</script>
 </body>
 </html>
