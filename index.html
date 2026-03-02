@@ -486,15 +486,16 @@ async function generateTextWithContext(system, user) {
   const model = settings.chatModel || "gpt-4.1-mini";
 
   if (mode === "responses") {
-    const data = await openaiFetch("/v1/responses", {
-      model,
-      input: [
-        { role: "system", content: system },
-        { role: "user", content: user }
-      ],
-      // If supported, helps keep JSON-only; if unsupported, it may be ignored.
-      response_format: { type: "json_object" }
-    });
+const data = await openaiFetch("/v1/responses", {
+  model,
+  input: [
+    { role: "system", content: system },
+    { role: "user", content: user }
+  ],
+  text: {
+    format: { type: "json_object" }
+  }
+});
     // responses API typically has output_text
     if (data?.output_text) return data.output_text;
     // fallback extraction
