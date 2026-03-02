@@ -632,6 +632,24 @@ Return JSON:
   setLoading(`Generating question ${questionCount}...`, `Parsing model output...`, 70, "parsing_json");
 
   const obj = safeJsonParse(raw);
+
+  // Guard: enforce short options by trimming (and if too long, regenerate once)
+const tooLong = (s) => (String(s || "").trim().split(/\s+/).length > 8);
+
+const opts = obj.options || {};
+const anyTooLong =
+  ["A","B","C","D"].some(k => tooLong(opts[k]));
+
+if (anyTooLong) {
+  // one retry with stricter instruction
+  const retryUser = user + "\n\nCRITICAL: Options must be <= 8 words. Rewrite with shorter options.";
+  const raw2 = await generateTextWithContext(system, retryUser);
+  const obj2 = safeJsonParse(raw2);
+  currentQuestionData = obj2;
+} else {
+  currentQuestionData = obj;
+}
+  
   if (!obj?.question || !obj?.options || !obj?.correctOption) throw new Error("Invalid question JSON shape.");
   if (!["A","B","C","D"].includes(obj.correctOption)) throw new Error("correctOption must be A/B/C/D.");
 
